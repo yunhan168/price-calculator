@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>場租報價計算機</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600;700;900&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f4ede1;
+    --paper:#fbf6ee;
+    --ink:#3c3127;
+    --ink-soft:#7a6a59;
+    --line:#e3d6c4;
+    --brand:#b06d3d;
+    --brand-deep:#9a5b2e;
+    --brand-soft:#e9d4bd;
+    --brand-tint:#f6ebdc;
+    --shadow:rgba(120,86,52,.16);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:"Noto Sans TC",sans-serif;
+    background:
+      radial-gradient(circle at 18% 12%, #faf3e8 0%, rgba(250,243,232,0) 45%),
+      radial-gradient(circle at 85% 88%, #efe4d2 0%, rgba(239,228,210,0) 50%),
+      var(--bg);
+    color:var(--ink);
+    min-height:100vh;
+    padding:28px 16px 64px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:560px;margin:0 auto;}
+
+  /* Header */
+  .head{text-align:center;margin-bottom:30px;}
+  .eyebrow{
+    font-size:12px;letter-spacing:.42em;color:var(--brand);
+    font-weight:500;margin-bottom:10px;padding-left:.42em;
+  }
+  .head h1{
+    font-family:"Noto Serif TC",serif;font-weight:700;
+    font-size:30px;line-height:1.25;letter-spacing:.04em;
+  }
+  .head .sub{
+    color:var(--ink-soft);font-size:13px;margin-top:10px;letter-spacing:.06em;
+  }
+  .rule{
+    width:46px;height:2px;background:var(--brand);
+    margin:18px auto 0;border-radius:2px;opacity:.7;
+  }
+
+  /* Card */
+  .card{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:24px 22px;
+    margin-bottom:18px;
+    box-shadow:0 14px 34px -22px var(--shadow);
+  }
+  .card-title{
+    display:flex;align-items:center;gap:9px;
+    font-family:"Noto Serif TC",serif;font-weight:600;
+    font-size:17px;margin-bottom:16px;letter-spacing:.05em;
+  }
+  .card-title::before{
+    content:"";width:0;height:0;
+    border-left:9px solid var(--brand);
+    border-top:6px solid transparent;
+    border-bottom:6px solid transparent;
+  }
+  .card-title .step{
+    margin-left:auto;font-family:"Noto Sans TC";
+    font-size:11px;font-weight:500;letter-spacing:.2em;
+    color:var(--brand);background:var(--brand-tint);
+    padding:3px 9px;border-radius:20px;
+  }
+
+  /* Plan options */
+  .plan{
+    display:block;cursor:pointer;position:relative;
+    border:1.5px solid var(--line);border-radius:14px;
+    padding:15px 16px;margin-bottom:11px;
+    transition:all .18s ease;background:#fff;
+  }
+  .plan:last-child{margin-bottom:0;}
+  .plan input{position:absolute;opacity:0;pointer-events:none;}
+  .plan:hover{border-color:var(--brand-soft);}
+  .plan-top{display:flex;align-items:center;gap:10px;}
+  .plan-letter{
+    font-family:"Noto Serif TC",serif;font-weight:900;
+    font-size:30px;line-height:1;color:var(--brand-soft);
+    transition:color .18s ease;width:30px;
+  }
+  .plan-name{font-weight:700;font-size:16px;letter-spacing:.04em;}
+  .plan-tag{
+    font-size:11px;color:var(--ink-soft);
+    border:1px solid var(--line);border-radius:20px;
+    padding:2px 9px;margin-left:auto;letter-spacing:.05em;
+  }
+  .plan-desc{
+    font-size:12.5px;color:var(--ink-soft);
+    margin:8px 0 0 40px;line-height:1.6;
+  }
+  .plan-price{
+    margin:10px 0 0 40px;font-size:12.5px;color:var(--ink-soft);
+    display:flex;gap:16px;flex-wrap:wrap;
+  }
+  .plan-price b{color:var(--ink);font-weight:600;}
+  .plan input:checked + .plan-inner .plan-letter{color:var(--brand);}
+  .plan.selected{
+    border-color:var(--brand);background:var(--brand-tint);
+    box-shadow:0 8px 22px -16px var(--shadow);
+  }
+
+  /* Toggle (平日/假日) */
+  .toggle{
+    display:grid;grid-template-columns:1fr 1fr;gap:8px;
+    background:var(--brand-tint);padding:5px;border-radius:13px;
+  }
+  .toggle label{cursor:pointer;}
+  .toggle input{position:absolute;opacity:0;}
+  .toggle .opt{
+    text-align:center;padding:11px;border-radius:9px;
+    font-weight:500;font-size:14px;letter-spacing:.05em;
+    color:var(--ink-soft);transition:all .18s ease;
+  }
+  .toggle .opt small{display:block;font-size:11px;margin-top:2px;opacity:.8;}
+  .toggle input:checked + .opt{
+    background:#fff;color:var(--brand-deep);font-weight:700;
+    box-shadow:0 6px 16px -10px var(--shadow);
+  }
+
+  /* People stepper */
+  .stepper{display:flex;align-items:center;gap:14px;justify-content:center;}
+  .stepper button{
+    width:46px;height:46px;border-radius:50%;
+    border:1.5px solid var(--brand-soft);background:#fff;
+    color:var(--brand);font-size:24px;font-weight:300;
+    cursor:pointer;transition:all .15s ease;line-height:1;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .stepper button:hover{background:var(--brand-tint);}
+  .stepper button:active{transform:scale(.92);}
+  .stepper .count{
+    text-align:center;min-width:96px;
+  }
+  .stepper .count input{
+    width:96px;text-align:center;border:none;background:transparent;
+    font-family:"Noto Serif TC",serif;font-weight:700;
+    font-size:38px;color:var(--ink);
+  }
+  .stepper .count input:focus{outline:none;}
+  .stepper .count span{display:block;font-size:11px;color:var(--ink-soft);letter-spacing:.18em;}
+  .min-note{
+    text-align:center;font-size:12px;margin-top:12px;
+    color:var(--brand-deep);background:var(--brand-tint);
+    padding:8px;border-radius:10px;line-height:1.5;
+  }
+  .min-note.hidden{display:none;}
+  .people-stack{display:flex;flex-direction:column;}
+  .people-row2{
+    display:flex;align-items:center;justify-content:space-between;padding:14px 2px;
+  }
+  .people-row2 + .people-row2{border-top:1px dashed var(--line);}
+  .people-info .t{font-weight:600;font-size:16px;letter-spacing:.04em;}
+  .people-info small{display:block;color:var(--ink-soft);font-size:11.5px;margin-top:3px;}
+  .stepper.sm button{width:40px;height:40px;font-size:20px;}
+  .stepper.sm{gap:10px;}
+  .stepper.sm .count{min-width:auto;}
+  .stepper.sm .count input{width:60px;font-size:28px;}
+
+  /* Add-ons */
+  .addon-hint{font-size:12px;color:var(--ink-soft);margin:-6px 0 14px;line-height:1.6;}
+  .addons{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .addon{
+    cursor:pointer;border:1.5px solid var(--line);border-radius:12px;
+    padding:14px 12px;text-align:center;background:#fff;
+    transition:all .18s ease;position:relative;
+  }
+  .addon input{position:absolute;opacity:0;}
+  .addon .emo{font-size:24px;display:block;margin-bottom:6px;}
+  .addon .nm{font-weight:500;font-size:13.5px;letter-spacing:.04em;}
+  .addon .pr{font-size:11px;color:var(--ink-soft);margin-top:3px;}
+  .addon:hover{border-color:var(--brand-soft);}
+  .addon.selected{
+    border-color:var(--brand);background:var(--brand-tint);
+  }
+  .addon.selected::after{
+    content:"✓";position:absolute;top:8px;right:10px;
+    color:var(--brand);font-weight:700;font-size:13px;
+  }
+
+  /* Result */
+  .result{
+    background:linear-gradient(160deg,#42352a 0%,#5a4332 100%);
+    color:#f7efe3;border-radius:20px;padding:26px 24px;
+    box-shadow:0 22px 44px -24px rgba(60,40,20,.55);
+  }
+  .result h2{
+    font-family:"Noto Serif TC",serif;font-weight:500;
+    font-size:14px;letter-spacing:.16em;color:#e6c9a6;
+    margin-bottom:18px;text-align:center;
+  }
+  .line{
+    display:flex;justify-content:space-between;align-items:baseline;
+    font-size:13.5px;padding:9px 0;border-bottom:1px dashed rgba(231,201,166,.22);
+  }
+  .line .lbl{color:#d9c6b0;}
+  .line .lbl small{color:#a99madd;opacity:.7;font-size:11px;margin-left:6px;}
+  .line .val{font-weight:500;}
+  .line.addon-line .lbl{color:#e6c9a6;}
+  .total{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    margin-top:18px;padding-top:6px;
+  }
+  .total .lbl{font-size:14px;letter-spacing:.1em;color:#e6c9a6;}
+  .total .amt{
+    font-family:"Noto Serif TC",serif;font-weight:900;
+    font-size:40px;line-height:1;letter-spacing:.01em;
+  }
+  .total .amt small{font-size:18px;font-weight:500;margin-right:4px;opacity:.85;}
+  .per{
+    text-align:right;font-size:11.5px;color:#bfa888;margin-top:8px;letter-spacing:.04em;
+  }
+  .empty{text-align:center;color:#cbb89f;font-size:13px;padding:14px 0;letter-spacing:.05em;}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px;}
+  .split-box{
+    border:1px solid rgba(231,201,166,.25);border-radius:13px;
+    padding:13px 10px;text-align:center;background:rgba(231,201,166,.10);
+  }
+  .split-box span{display:block;font-size:11px;color:#cbb89f;letter-spacing:.12em;margin-bottom:6px;}
+  .split-box b{font-family:"Noto Serif TC",serif;font-size:23px;font-weight:700;color:#f7efe3;}
+  .split-box.deposit{background:rgba(176,109,61,.30);border-color:rgba(231,201,166,.5);}
+  .split-box.deposit span{color:#f0d9bb;}
+
+  .foot{text-align:center;font-size:11px;color:var(--ink-soft);margin-top:24px;line-height:1.8;letter-spacing:.04em;}
+  .foot b{color:var(--brand-deep);font-weight:600;}
+
+  @media(max-width:420px){
+    .head h1{font-size:25px;}
+    .plan-desc,.plan-price{margin-left:0;}
+    .total .amt{font-size:34px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="head">
+    <div class="eyebrow">金格點一杯</div>
+    <h1>場租報價計算機</h1>
+    <div class="sub">選擇方案 · 輸入人數 · 立即試算</div>
+    <div class="rule"></div>
+  </div>
+
+  <!-- Step 1: Plan -->
+  <div class="card">
+    <div class="card-title">選擇方案<span class="step">STEP 1</span></div>
+    <div id="planGroup"></div>
+  </div>
+
+  <!-- Step 2: Day type -->
+  <div class="card">
+    <div class="card-title">使用日期<span class="step">STEP 2</span></div>
+    <div class="toggle">
+      <label>
+        <input type="radio" name="day" value="weekday" checked>
+        <div class="opt">平日<small>最低 10 人</small></div>
+      </label>
+      <label>
+        <input type="radio" name="day" value="holiday">
+        <div class="opt">假日<small>最低 20 人 · 含場地費</small></div>
+      </label>
+    </div>
+  </div>
+
+  <!-- Step 3: People -->
+  <div class="card">
+    <div class="card-title">參加人數<span class="step">STEP 3</span></div>
+    <div class="people-stack">
+      <div class="people-row2">
+        <div class="people-info"><div class="t">大人</div><small>5 歲以上 · 計費</small></div>
+        <div class="stepper sm">
+          <button type="button" data-t="adults" data-d="-1">−</button>
+          <div class="count"><input type="number" id="adults" value="10" min="0" inputmode="numeric"></div>
+          <button type="button" data-t="adults" data-d="1">+</button>
+        </div>
+      </div>
+      <div class="people-row2">
+        <div class="people-info"><div class="t">小孩</div><small>5 歲以下 · 免費 🎉</small></div>
+        <div class="stepper sm">
+          <button type="button" data-t="kids" data-d="-1">−</button>
+          <div class="count"><input type="number" id="kids" value="0" min="0" inputmode="numeric"></div>
+          <button type="button" data-t="kids" data-d="1">+</button>
+        </div>
+      </div>
+    </div>
+    <div class="min-note hidden" id="minNote"></div>
+  </div>
+
+  <!-- Step 4: Add-ons -->
+  <div class="card">
+    <div class="card-title">加購佈置<span class="step">STEP 4 · 選填</span></div>
+    <div class="addon-hint">每項佈置方案 $2,999，擇一加購（再點一次可取消）</div>
+    <div class="addons" id="addonGroup"></div>
+  </div>
+
+  <!-- Result -->
+  <div class="result">
+    <h2>— 試算結果 —</h2>
+    <div id="breakdown"></div>
+  </div>
+
+  <div class="foot">
+    平日佈置時間為前後各半小時，假日不提供提前佈置。<br>
+    此為快速試算，<b>實際報價以正式確認為準</b>。
+  </div>
+
+</div>
+
+<script>
+const PLANS = {
+  A:{letter:"A",name:"甜食方案",tag:"3 小時",desc:"適合半日活動、喜歡甜食的你們",weekday:249,holiday:299,venue:2000},
+  B:{letter:"B",name:"鹹食方案",tag:"3 小時",desc:"適合半日活動、喜歡鹹食的你們",weekday:349,holiday:399,venue:2000},
+  C:{letter:"C",name:"整日方案",tag:"6 小時",desc:"適合需要長時間使用場地的你們",weekday:399,holiday:499,venue:3000},
+};
+const ADDONS = [
+  {id:"gender",emo:"🎈",name:"性別趴"},
+  {id:"grab",emo:"🧸",name:"抓周"},
+  {id:"drool",emo:"🍼",name:"收涎"},
+  {id:"bday",emo:"🎂",name:"生日派對"},
+];
+const ADDON_PRICE = 2999;
+const MIN = {weekday:10, holiday:20};
+const fmt = n => "$" + n.toLocaleString("en-US");
+
+// Build plan options
+const planGroup = document.getElementById("planGroup");
+Object.values(PLANS).forEach((p,i)=>{
+  const label = document.createElement("label");
+  label.className = "plan" + (i===0?" selected":"");
+  label.innerHTML = `
+    <input type="radio" name="plan" value="${p.letter}" ${i===0?"checked":""}>
+    <div class="plan-inner">
+      <div class="plan-top">
+        <span class="plan-letter">${p.letter}</span>
+        <span class="plan-name">${p.name}</span>
+        <span class="plan-tag">${p.tag}</span>
+      </div>
+      <div class="plan-desc">${p.desc}</div>
+      <div class="plan-price">
+        <span>平日 <b>${p.weekday}</b> 元/人</span>
+        <span>假日 <b>${p.holiday}</b> 元/人＋場地費 <b>${fmt(p.venue)}</b></span>
+      </div>
+    </div>`;
+  planGroup.appendChild(label);
+});
+
+// Build add-ons (擇一)
+let currentAddon = null;
+const addonGroup = document.getElementById("addonGroup");
+ADDONS.forEach(a=>{
+  const label = document.createElement("label");
+  label.className = "addon";
+  label.innerHTML = `
+    <input type="radio" name="addon" value="${a.id}" data-name="${a.name}">
+    <span class="emo">${a.emo}</span>
+    <span class="nm">${a.name}</span>
+    <span class="pr">${fmt(ADDON_PRICE)}</span>`;
+  addonGroup.appendChild(label);
+});
+addonGroup.querySelectorAll('input').forEach(inp=>{
+  inp.addEventListener('click',()=>{
+    if(currentAddon === inp.value){
+      inp.checked = false;
+      currentAddon = null;
+    }else{
+      currentAddon = inp.value;
+    }
+    calc();
+  });
+});
+
+const adultsInput = document.getElementById("adults");
+const kidsInput = document.getElementById("kids");
+const minNote = document.getElementById("minNote");
+const breakdown = document.getElementById("breakdown");
+
+function getPlan(){ return PLANS[document.querySelector('input[name="plan"]:checked').value]; }
+function getDay(){ return document.querySelector('input[name="day"]:checked').value; }
+
+function calc(){
+  // visual selected states
+  document.querySelectorAll(".plan").forEach(l=>{
+    l.classList.toggle("selected", l.querySelector("input").checked);
+  });
+  document.querySelectorAll(".addon").forEach(l=>{
+    l.classList.toggle("selected", l.querySelector("input").checked);
+  });
+
+  const plan = getPlan();
+  const day = getDay();
+  const min = MIN[day];
+  let adults = parseInt(adultsInput.value) || 0;
+  let kids = parseInt(kidsInput.value) || 0;
+
+  // billable people = adults (5歲以下免費), respects minimum
+  const billable = Math.max(adults, min);
+
+  // min note (依大人數判斷)
+  if(adults < min){
+    minNote.classList.remove("hidden");
+    minNote.innerHTML = `${day==="weekday"?"平日":"假日"}最低人數為 <b>${min} 位大人</b>（5 歲以下不列入），未達門檻仍以 ${min} 人計費`;
+  }else{
+    minNote.classList.add("hidden");
+  }
+
+  const perPerson = day==="weekday" ? plan.weekday : plan.holiday;
+  const venue = day==="holiday" ? plan.venue : 0;
+  const mealCost = perPerson * billable;
+
+  // add-ons
+  const checkedAddons = [...document.querySelectorAll('#addonGroup input:checked')];
+  const addonCost = checkedAddons.length * ADDON_PRICE;
+
+  const total = mealCost + venue + addonCost;
+  const deposit = Math.round(total * 0.3);
+  const balance = total - deposit;
+
+  // render
+  let html = `
+    <div class="line">
+      <span class="lbl">${plan.name} <small>${day==="weekday"?"平日":"假日"} ${perPerson}元/人 × ${billable}人</small></span>
+      <span class="val">${fmt(mealCost)}</span>
+    </div>`;
+  if(kids>0){
+    html += `
+    <div class="line">
+      <span class="lbl">5 歲以下孩童 <small>${kids} 位</small></span>
+      <span class="val">免費</span>
+    </div>`;
+  }
+  if(venue>0){
+    html += `
+    <div class="line">
+      <span class="lbl">假日場地費</span>
+      <span class="val">${fmt(venue)}</span>
+    </div>`;
+  }
+  checkedAddons.forEach(a=>{
+    html += `
+    <div class="line addon-line">
+      <span class="lbl">佈置 · ${a.dataset.name}</span>
+      <span class="val">${fmt(ADDON_PRICE)}</span>
+    </div>`;
+  });
+  html += `
+    <div class="total">
+      <span class="lbl">預估總金額</span>
+      <span class="amt"><small>NT$</small>${total.toLocaleString("en-US")}</span>
+    </div>
+    <div class="per">平均每位大人約 ${fmt(Math.round(total/billable))}（含加購）</div>
+    <div class="split">
+      <div class="split-box deposit"><span>訂金 30%</span><b>${fmt(deposit)}</b></div>
+      <div class="split-box"><span>尾款 70%</span><b>${fmt(balance)}</b></div>
+    </div>`;
+
+  breakdown.innerHTML = html;
+}
+
+// events
+document.addEventListener("change", calc);
+adultsInput.addEventListener("input", calc);
+kidsInput.addEventListener("input", calc);
+document.querySelectorAll('.stepper.sm button').forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    const inp = document.getElementById(btn.dataset.t);
+    const d = parseInt(btn.dataset.d);
+    inp.value = Math.max(0,(parseInt(inp.value)||0)+d);
+    calc();
+  });
+});
+
+calc();
+</script>
+</body>
+</html>
