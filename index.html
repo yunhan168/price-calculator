@@ -116,23 +116,51 @@
     box-shadow:0 8px 22px -16px var(--shadow);
   }
 
-  /* Toggle (平日/假日) */
+  /* Toggle (平日/假日/夜間) */
   .toggle{
     display:grid;grid-template-columns:1fr 1fr;gap:8px;
     background:var(--brand-tint);padding:5px;border-radius:13px;
   }
+  .toggle.three{grid-template-columns:repeat(3,1fr);}
   .toggle label{cursor:pointer;}
   .toggle input{position:absolute;opacity:0;}
   .toggle .opt{
-    text-align:center;padding:11px;border-radius:9px;
-    font-weight:500;font-size:14px;letter-spacing:.05em;
+    text-align:center;padding:11px 6px;border-radius:9px;
+    font-weight:500;font-size:14px;letter-spacing:.04em;
     color:var(--ink-soft);transition:all .18s ease;
   }
-  .toggle .opt small{display:block;font-size:11px;margin-top:2px;opacity:.8;}
+  .toggle .opt small{display:block;font-size:10.5px;margin-top:3px;opacity:.8;line-height:1.3;}
   .toggle input:checked + .opt{
     background:#fff;color:var(--brand-deep);font-weight:700;
     box-shadow:0 6px 16px -10px var(--shadow);
   }
+  .toggle label.disabled{opacity:.32;pointer-events:none;}
+
+  /* Extra hour toggle */
+  .extra-hour{display:block;cursor:pointer;margin-top:12px;}
+  .extra-hour input{position:absolute;opacity:0;}
+  .eh-inner{
+    display:flex;align-items:center;justify-content:space-between;
+    border:1.5px solid var(--line);border-radius:12px;padding:13px 15px;
+    background:#fff;transition:all .18s ease;
+  }
+  .eh-txt{font-size:14px;font-weight:500;letter-spacing:.03em;}
+  .eh-txt small{color:var(--ink-soft);font-weight:400;margin-left:6px;}
+  .eh-check{
+    width:44px;height:25px;border-radius:20px;background:var(--line);
+    position:relative;transition:all .2s ease;flex-shrink:0;
+  }
+  .eh-check::after{
+    content:"";position:absolute;top:3px;left:3px;width:19px;height:19px;
+    border-radius:50%;background:#fff;transition:all .2s ease;
+    box-shadow:0 1px 3px rgba(0,0,0,.2);
+  }
+  .extra-hour input:checked + .eh-inner{border-color:var(--brand);background:var(--brand-tint);}
+  .extra-hour input:checked + .eh-inner .eh-check{background:var(--brand);}
+  .extra-hour input:checked + .eh-inner .eh-check::after{left:22px;}
+  .extra-hour.disabled{opacity:.34;pointer-events:none;}
+  .eh-note{text-align:center;font-size:11.5px;color:var(--ink-soft);margin-top:8px;letter-spacing:.04em;}
+  .eh-note.hidden{display:none;}
 
   /* People stepper */
   .stepper{display:flex;align-items:center;gap:14px;justify-content:center;}
@@ -266,16 +294,29 @@
   <!-- Step 2: Day type -->
   <div class="card">
     <div class="card-title">使用日期<span class="step">STEP 2</span></div>
-    <div class="toggle">
+    <div class="toggle three">
       <label>
         <input type="radio" name="day" value="weekday" checked>
         <div class="opt">平日<small>最低 10 人</small></div>
       </label>
       <label>
         <input type="radio" name="day" value="holiday">
-        <div class="opt">假日<small>最低 20 人 · 含場地費</small></div>
+        <div class="opt">假日<small>最低 20 人<br>需場地費</small></div>
+      </label>
+      <label id="nightLabel">
+        <input type="radio" name="day" value="night">
+        <div class="opt">平日夜間<small>18:00–22:00</small></div>
       </label>
     </div>
+    <div class="min-note hidden" id="dayNote"></div>
+    <label class="extra-hour" id="extraHourLabel">
+      <input type="checkbox" id="extraHour">
+      <div class="eh-inner">
+        <span class="eh-txt">加購 1 小時 <small>+$1,000</small></span>
+        <span class="eh-check"></span>
+      </div>
+    </label>
+    <div class="eh-note hidden" id="ehNote">平日夜間不提供加時</div>
   </div>
 
   <!-- Step 3: People -->
@@ -324,9 +365,9 @@
 
 <script>
 const PLANS = {
-  A:{letter:"A",name:"甜食方案",tag:"3 小時",desc:"適合半日活動、喜歡甜食的你們",weekday:249,holiday:299,venue:2000},
-  B:{letter:"B",name:"鹹食方案",tag:"3 小時",desc:"適合半日活動、喜歡鹹食的你們",weekday:349,holiday:399,venue:2000},
-  C:{letter:"C",name:"整日方案",tag:"6 小時",desc:"適合需要長時間使用場地的你們",weekday:399,holiday:499,venue:3000},
+  A:{letter:"A",name:"甜食方案",tag:"3 小時",desc:"適合半日活動、喜歡甜食的你們",weekday:249,holiday:299,night:299,venue:2000,hasNight:true},
+  B:{letter:"B",name:"鹹甜食方案",tag:"3 小時",desc:"適合半日活動、喜歡鹹食的你們",weekday:349,holiday:399,night:399,venue:2000,hasNight:true},
+  C:{letter:"C",name:"整日方案（鹹甜食）",tag:"6 小時",desc:"適合需要長時間使用場地的你們",weekday:399,holiday:499,night:null,venue:3000,hasNight:false},
 };
 const ADDONS = [
   {id:"gender",emo:"🎈",name:"性別趴"},
@@ -335,7 +376,14 @@ const ADDONS = [
   {id:"bday",emo:"🎂",name:"生日派對"},
 ];
 const ADDON_PRICE = 2999;
-const MIN = {weekday:10, holiday:20};
+const MIN = {weekday:10, holiday:20, night:15};
+// 鹹食方案(B) 20人含佈置 優惠組合價：底價(含20人+佈置) + 每多一人加價
+const PROMO = {
+  weekday:{base:9900,  extra:349, venueIncluded:false},
+  holiday:{base:12900, extra:399, venueIncluded:true},
+  night:  {base:10900, extra:399, venueIncluded:false},
+};
+const DAY_NAME = {weekday:"平日", holiday:"假日", night:"平日夜間"};
 const fmt = n => "$" + n.toLocaleString("en-US");
 
 // Build plan options
@@ -388,12 +436,45 @@ addonGroup.querySelectorAll('input').forEach(inp=>{
 const adultsInput = document.getElementById("adults");
 const kidsInput = document.getElementById("kids");
 const minNote = document.getElementById("minNote");
+const dayNote = document.getElementById("dayNote");
+const nightLabel = document.getElementById("nightLabel");
+const extraHourInput = document.getElementById("extraHour");
+const extraHourLabel = document.getElementById("extraHourLabel");
+const ehNote = document.getElementById("ehNote");
 const breakdown = document.getElementById("breakdown");
 
 function getPlan(){ return PLANS[document.querySelector('input[name="plan"]:checked').value]; }
 function getDay(){ return document.querySelector('input[name="day"]:checked').value; }
 
+// 整日方案(C) 沒有夜間時段：鎖住夜間，若已選夜間則退回平日
+function syncDayOptions(){
+  const plan = getPlan();
+  const nightInput = nightLabel.querySelector('input');
+  if(plan.hasNight){
+    nightLabel.classList.remove("disabled");
+    dayNote.classList.add("hidden");
+  }else{
+    nightLabel.classList.add("disabled");
+    if(nightInput.checked){
+      document.querySelector('input[name="day"][value="weekday"]').checked = true;
+    }
+    dayNote.classList.remove("hidden");
+    dayNote.innerHTML = `整日方案為 6 小時，<b>不適用夜間時段</b>`;
+  }
+  // 平日夜間不可加時
+  if(getDay() === "night"){
+    extraHourLabel.classList.add("disabled");
+    extraHourInput.checked = false;
+    ehNote.classList.remove("hidden");
+  }else{
+    extraHourLabel.classList.remove("disabled");
+    ehNote.classList.add("hidden");
+  }
+}
+
 function calc(){
+  syncDayOptions();
+
   // visual selected states
   document.querySelectorAll(".plan").forEach(l=>{
     l.classList.toggle("selected", l.querySelector("input").checked);
@@ -407,57 +488,105 @@ function calc(){
   const min = MIN[day];
   let adults = parseInt(adultsInput.value) || 0;
   let kids = parseInt(kidsInput.value) || 0;
-
-  // billable people = adults (5歲以下免費), respects minimum
   const billable = Math.max(adults, min);
 
-  // min note (依大人數判斷)
-  if(adults < min){
-    minNote.classList.remove("hidden");
-    minNote.innerHTML = `${day==="weekday"?"平日":"假日"}最低人數為 <b>${min} 位大人</b>（5 歲以下不列入），未達門檻仍以 ${min} 人計費`;
-  }else{
-    minNote.classList.add("hidden");
-  }
-
-  const perPerson = day==="weekday" ? plan.weekday : plan.holiday;
-  const venue = day==="holiday" ? plan.venue : 0;
-  const mealCost = perPerson * billable;
-
-  // add-ons
   const checkedAddons = [...document.querySelectorAll('#addonGroup input:checked')];
-  const addonCost = checkedAddons.length * ADDON_PRICE;
+  const hasAddon = checkedAddons.length > 0;
 
-  const total = mealCost + venue + addonCost;
-  const deposit = Math.round(total * 0.3);
-  const balance = total - deposit;
+  // 優惠組合條件：鹹食(B) + 有加購佈置 + 滿 20 人
+  const promoActive = plan.letter === "B" && hasAddon && billable >= 20;
 
-  // render
-  let html = `
-    <div class="line">
-      <span class="lbl">${plan.name} <small>${day==="weekday"?"平日":"假日"} ${perPerson}元/人 × ${billable}人</small></span>
-      <span class="val">${fmt(mealCost)}</span>
-    </div>`;
-  if(kids>0){
+  let total = 0;
+  let html = "";
+
+  if(promoActive){
+    const pr = PROMO[day];
+    const extra = billable - 20;
+    const extraCost = extra * pr.extra;
+    total = pr.base + extraCost;
+
     html += `
+    <div class="line">
+      <span class="lbl">鹹甜食方案 · ${DAY_NAME[day]}優惠組合 <small>20人含佈置（${checkedAddons[0].dataset.name}）${pr.venueIncluded?"・含場地費":""}</small></span>
+      <span class="val">${fmt(pr.base)}</span>
+    </div>`;
+    if(extra > 0){
+      html += `
+    <div class="line">
+      <span class="lbl">加收 ${extra} 位 <small>每位 ${pr.extra} 元</small></span>
+      <span class="val">${fmt(extraCost)}</span>
+    </div>`;
+    }
+    if(kids > 0){
+      html += `
     <div class="line">
       <span class="lbl">5 歲以下孩童 <small>${kids} 位</small></span>
       <span class="val">免費</span>
     </div>`;
-  }
-  if(venue>0){
+    }
+  }else{
+    const perPerson = day==="weekday" ? plan.weekday : day==="holiday" ? plan.holiday : plan.night;
+    const venue = day==="holiday" ? plan.venue : 0;
+    const mealCost = perPerson * billable;
+    const addonCost = checkedAddons.length * ADDON_PRICE;
+    total = mealCost + venue + addonCost;
+
     html += `
+    <div class="line">
+      <span class="lbl">${plan.name} <small>${DAY_NAME[day]} ${perPerson}元/人 × ${billable}人</small></span>
+      <span class="val">${fmt(mealCost)}</span>
+    </div>`;
+    if(kids > 0){
+      html += `
+    <div class="line">
+      <span class="lbl">5 歲以下孩童 <small>${kids} 位</small></span>
+      <span class="val">免費</span>
+    </div>`;
+    }
+    if(venue > 0){
+      html += `
     <div class="line">
       <span class="lbl">假日場地費</span>
       <span class="val">${fmt(venue)}</span>
     </div>`;
-  }
-  checkedAddons.forEach(a=>{
-    html += `
+    }
+    checkedAddons.forEach(a=>{
+      html += `
     <div class="line addon-line">
       <span class="lbl">佈置 · ${a.dataset.name}</span>
       <span class="val">${fmt(ADDON_PRICE)}</span>
     </div>`;
-  });
+    });
+  }
+
+  // 加購 1 小時（平日夜間不可加）
+  const extraHour = extraHourInput.checked && day !== "night";
+  if(extraHour){
+    total += 1000;
+    html += `
+    <div class="line">
+      <span class="lbl">加購 1 小時</span>
+      <span class="val">${fmt(1000)}</span>
+    </div>`;
+  }
+
+  // min / 湊團提示
+  if(adults < min){
+    minNote.classList.remove("hidden");
+    minNote.innerHTML = `${DAY_NAME[day]}最低人數為 <b>${min} 位大人</b>（5 歲以下不列入），未達門檻仍以 ${min} 人計費`;
+  }else if(plan.letter === "B" && hasAddon && billable < 20){
+    minNote.classList.remove("hidden");
+    minNote.innerHTML = `鹹甜食方案滿 <b>20 人</b>加購佈置，即可享優惠組合價（${DAY_NAME[day]} ${fmt(PROMO[day].base)} 起）`;
+  }else if(promoActive){
+    minNote.classList.remove("hidden");
+    minNote.innerHTML = `已套用 <b>20人含佈置優惠組合價</b>，佈置費已內含${PROMO[day].venueIncluded?"、含場地費":""}`;
+  }else{
+    minNote.classList.add("hidden");
+  }
+
+  const deposit = Math.round(total * 0.3);
+  const balance = total - deposit;
+
   html += `
     <div class="total">
       <span class="lbl">預估總金額</span>
